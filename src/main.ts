@@ -1,66 +1,81 @@
-import build_ast from "./plugins/ast";
-import exec_bf_once from "./plugins/executor";
+export default function brainfuck(code: string, input: string = ""): [boolean, string] {
+  const MAX_ITER = 65535;
+  const MAX_NUMBER = 255;
+  const MEMORY_SIZE = 256;
 
+  let result: string = "";
+  let code_cursor: number = -1;
+  let cell_cursor: number = 0;
+  let input_cursor: number = 0;
+  let memory: number[] = new Array(MEMORY_SIZE).fill(0);
+  let skipins: boolean = false;
 
-function _run_bf(
-  nodes: Array<any>,
-  mem: number[],
-  cur: number,
-  out: string,
-  max_val: number
-): [boolean, string, number[], number] {
-  for (const node of nodes) {
-    if (typeof node === "string") {
-      const res = exec_bf_once(node, {
-        memory: mem,
-        cursor: cur,
-        max_value: max_val,
-      });
-      if (!res.success) {
-        return [false, out, mem, cur];
+  const bracketMap: Map<number, number> = new Map();
+  const stack: number[] = [];
+  for (let i = 0; i < code.length; i++) {
+    if (code[i] === '[') {
+      stack.push(i);
+    } else if (code[i] === ']') {
+      if (stack.length === 0) {
+        return [false, "Unmatched ']' at pos " + i];
       }
-      mem = res.memory;
-      cur = res.cursor;
-      out = out + res.output;
-    } else if (Array.isArray(node)) {
-      let guard = 0;
-      const MAX_ITER = 1_000_000;
-      while (mem[cur] !== 0) {
-        if (guard++ > MAX_ITER) {
-          return [false, out, mem, cur];
-        }
-        const [ok2, out2, mem2, cur2] = _run_bf(node, mem, cur, out);
-        if (!ok2) {
-          return [false, out2, mem2, cur2];
-        }
-        mem = mem2;
-        cur = cur2;
-        out = out2;
-      }
+      const open = stack.pop()!;
+      bracketMap.set(open, i);
+      bracketMap.set(i, open);
     }
   }
-  return [true, out, mem, cur];
-};
-
-export default function brainfuck(
-  code: string,
-  {
-    tape_size = 256,
-    max_val = 255,
-  }: {
-    tape_size?: number;
-    max_val?: number;
-  } = {}
-): [boolean, string] {
-  const [ok, ast] = build_ast(code);
-  if (!ok) {
-    return [false, ""];
+  if (stack.length > 0) {
+    return [false, "Unmatched '[' at pos " + stack[stack.length - 1]];
   }
 
-  let memory: number[] = new Array(tape_size).fill(0);
-  let cursor = 0;
-  let output = "";
+  let iterations: number = 0;
 
-  const [success, finalOut] = _run_bf(ast, memory, cursor, output, max_val);
-  return [success, finalOut];
+  while (code_cursor < code.length) {
+    if (iterations > MAX_ITER) {
+      return [false, `Exec exceeded max iter (${MAX_ITER})`];
+    }
+
+    const cmd: string = code[++code_cursor];
+
+    switch (cmd) {
+      case '>':
+        if (++cell_cursor >= MEMORY_SIZE) {
+          cell_cursor = 0;
+        }
+        break;
+      case '<':
+        if (--cell_cursor < 0) {
+          cell_cursor = MEMORY_SIZE - 1;
+        }
+        break;
+      case '+':
+        memory[cell_cursor] = (memory[cell_cursor] + 1) % (MAX_NUMBER + 1);
+        break;
+      case '-':
+        memory[cell_cursor] = (memory[cell_cursor] - 1 + (MAX_NUMBER + 1)) % (MAX_NUMBER + 1);
+        break;
+      case '.':
+        result += String.fromCharCode(memory[cell_cursor]);
+        break;
+      case ',':
+        memory[cell_cursor] = (input[input_cursor++] || "\0").charCodeAt(0);
+        break;
+      case '[':
+        if (memory[cell_cursor] === 0) {
+          code_cursor = bracketMap.get(code_cursor)!;
+          iterations = 0;
+        }
+        break;
+      case ']':
+        if (memory[cell_cursor] !== 0) {
+          code_cursor = bracketMap.get(code_cursor)!;
+          iterations++;
+        } else {
+          iterations = 0;
+        }
+        break;
+    }
+  }
+
+  return [true, result];
 }
