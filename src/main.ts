@@ -9,7 +9,7 @@ export const processor = {
 export default function brainfuck(
   code: string,
   input: string = "",
-  processor: (code: string) => [boolean, string] = donothing
+  processor: (code: string) => [boolean, string] = donothing // 改为macro_comment_process
 ): [boolean, string] {
 
   let stat: boolean;
