@@ -1,5 +1,24 @@
-export default function brainfuck(code: string, input: string = ""): [boolean, string] {
-  const MAX_ITER = 65535;
+import donothing from "./plugins/donothing";
+import macro_comment_process from "./plugins/macro_comment_processor";
+
+export const processor = {
+  donothing,
+  macro_comment_process
+}
+
+export default function brainfuck(
+  code: string,
+  input: string = "",
+  processor: (code: string) => [boolean, string] = donothing
+): [boolean, string] {
+
+  let stat: boolean;
+  [stat, code] = processor(code);
+  if (!stat) {
+    return [false, "Processor exception"]
+  }
+
+  const MAX_ITER = 131071;
   const MAX_NUMBER = 255;
   const MEMORY_SIZE = 256;
 
@@ -28,10 +47,10 @@ export default function brainfuck(code: string, input: string = ""): [boolean, s
     return [false, "Unmatched '[' at pos " + stack[stack.length - 1]];
   }
 
-  let iterations: number = 0;
+  let iterations: number[] = [];
 
   while (code_cursor < code.length) {
-    if (iterations > MAX_ITER) {
+    if (iterations[iterations.length-1] > MAX_ITER) {
       return [false, `Exec exceeded max iter (${MAX_ITER})`];
     }
 
@@ -63,15 +82,16 @@ export default function brainfuck(code: string, input: string = ""): [boolean, s
       case '[':
         if (memory[cell_cursor] === 0) {
           code_cursor = bracketMap.get(code_cursor)!;
-          iterations = 0;
+        } else {
+          iterations.push(0);
         }
         break;
       case ']':
         if (memory[cell_cursor] !== 0) {
           code_cursor = bracketMap.get(code_cursor)!;
-          iterations++;
+          iterations[iterations.length-1] ++;
         } else {
-          iterations = 0;
+          iterations.pop();
         }
         break;
     }
