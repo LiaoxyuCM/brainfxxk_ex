@@ -9,13 +9,13 @@ export const processor = {
 export default function brainfuck(
   code: string,
   input: string = "",
-  processor: (code: string) => [boolean, string] = donothing // 改为macro_comment_process
+  preprocessor: (code: string) => [boolean, string] = donothing // 改为macro_comment_process
 ): [boolean, string] {
 
   let stat: boolean;
-  [stat, code] = processor(code);
+  [stat, code] = preprocessor(code);
   if (!stat) {
-    return [false, "Processor exception"]
+    return [false, "Preprocessor exception"]
   }
 
   const MAX_ITER = 131071;
@@ -27,7 +27,6 @@ export default function brainfuck(
   let cell_cursor: number = 0;
   let input_cursor: number = 0;
   let memory: number[] = new Array(MEMORY_SIZE).fill(0);
-  let skipins: boolean = false;
 
   const bracketMap: Map<number, number> = new Map();
   const stack: number[] = [];
