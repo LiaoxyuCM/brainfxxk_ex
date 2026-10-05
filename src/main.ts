@@ -50,7 +50,7 @@ export default function brainfuck(
 
   while (code_cursor < code.length) {
     if (iterations[iterations.length-1] > MAX_ITER) {
-      return [false, `Exec exceeded max iter (${MAX_ITER})`];
+      return [false, `Exec exceeded max iter (${MAX_ITER}) at pos ${code_cursor}`];
     }
 
     const cmd: string = code[++code_cursor];
